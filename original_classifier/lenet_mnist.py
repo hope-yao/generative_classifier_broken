@@ -90,21 +90,23 @@ class Lenet():
 
         return end_points
 
-    def build_model(self):
+    def build_model(self, input, reuse=False):
 
-        with tf.variable_scope('LENET', reuse=False) as lenet_var:
-            self.end_points = self.add_layers(self.input, num_classes=10, is_training=True,
+        with tf.variable_scope('LENET', reuse=reuse) as lenet_var:
+            self.end_points = self.add_layers(input, num_classes=10, is_training=True,
                            dropout_keep_prob=0.99)
             self.lenet_var = tf.contrib.framework.get_variables(lenet_var)
 
-        # Define loss and optimizer, minimize the squared error
-        self.rec_err = tf.reduce_mean(tf.abs(self.end_points['Predictions'] - self.labels))
-        self.rec_cost = self.imsize * self.imsize * tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.end_points['Logits']))
+            # Define loss and optimizer, minimize the squared error
+            self.rec_err = tf.reduce_mean(tf.abs(self.end_points['Predictions'] - self.labels))
+            self.rec_cost = self.imsize * self.imsize * tf.reduce_mean(
+                tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.end_points['Logits']))
 
-        optimizer = tf.train.AdamOptimizer(self.learning_rate)
-        grads_g = optimizer.compute_gradients(self.rec_cost, var_list=self.lenet_var)
-        self.apply_gradient_training = optimizer.apply_gradients(grads_g)
+            optimizer = tf.train.AdamOptimizer(self.learning_rate)
+            grads_g = optimizer.compute_gradients(self.rec_cost, var_list=self.lenet_var)
+            self.apply_gradient_training = optimizer.apply_gradients(grads_g)
+
+        return self.end_points
 
     def train_model(self):
         # Launch the graph
@@ -150,12 +152,10 @@ class Lenet():
 
 if __name__ == '__main__':
     lenet = Lenet()
-    lenet.build_model()
+    lenet.build_model(lenet.input)
     # lenet.train_model()
 
-    from generate_attacks.generate_FGSM_attacks import get_attack_directions
-    # modle_path = 'models/LENET/LENET_2018_02_13_15_49_34/experiment_19.ckpt'
-
+    from adversarial_attacks.generate_FGSM_attacks import get_attack_directions
     # Launch the graph
     FLAGS = tf.app.flags.FLAGS
     tfconfig = tf.ConfigProto(
@@ -164,7 +164,7 @@ if __name__ == '__main__':
     )
     tfconfig.gpu_options.allow_growth = True
     sess = tf.Session(config=tfconfig)
-    trained_model_ckpt = '/home/exx/Documents/Hope/generative_classifier/models/LENET/LENET_2018_02_13_17_27_15/experiment_0.ckpt'
+    trained_model_ckpt = '/home/exx/Documents/Hope/generative_classifier/original_classifier/models/LENET/LENET_2018_02_14_10_02_23/experiment_0.ckpt'
     saver = tf.train.Saver()
     saver.restore(sess, trained_model_ckpt)
 

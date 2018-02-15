@@ -15,7 +15,7 @@ import tensorflow as tf
 slim = tf.contrib.slim
 from utils.utils import *
 from tensorflow.examples.tutorials.mnist import input_data
-from source_code.generator_models import *
+from generative_classifier.generator_models import *
 from utils.plot_figures import *
 
 
@@ -38,10 +38,10 @@ class generative_classifier(object):
         self.imsize = 28# MNIST data input (img shape: 28*28)
 
         self.logdir, self.modeldir = creat_dir('VAE')
-        copyfile('./source_code/VAE_subnet.py', self.modeldir + '/' + 'VAE_subnet.py')
-        copyfile('./source_code/generator_models.py', self.modeldir + '/' + 'generator_models.py')
-        copyfile('./source_code/plot_figures.py', self.modeldir + '/' + 'plot_figures.py')
-        copyfile('./generate_attacks/generate_FGSM_attacks.py', self.modeldir + '/' + 'generate_FGSM_attacks.py')
+        copyfile('./generative_classifier/VAE_subnet.py', self.modeldir + '/' + 'VAE_subnet.py')
+        copyfile('./generative_classifier/generator_models.py', self.modeldir + '/' + 'generator_models.py')
+        copyfile('./utils/plot_figures.py', self.modeldir + '/' + 'plot_figures.py')
+        copyfile('./adversarial_attacks/generate_FGSM_attacks.py', self.modeldir + '/' + 'generate_FGSM_attacks.py')
 
         # tf Graph input (only pictures)
         self.X = tf.placeholder("float", [self.batch_size, self.imsize, self.imsize, 1])
@@ -145,5 +145,5 @@ if __name__ == "__main__":
     classifier = generative_classifier()
     classifier.build_training_model()
     classifier.optimizing()
-    plotting(classifier, classifier.modeldir+'/test.png')
+    visualize_generator_performance(classifier, classifier.modeldir+'/test.png')
     print('done')

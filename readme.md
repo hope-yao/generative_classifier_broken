@@ -1,5 +1,5 @@
 # Generative classifier
-![acc](../master/assests/net_struct.png)
+![acc](../master/assets/net_struct.png)
 
 ## Prerequisite
 Tensorflow 1.1.0
