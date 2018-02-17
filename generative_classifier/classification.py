@@ -160,10 +160,16 @@ def testing_model(sess, model, valid_x, valid_y, para_list, fn='mnist', gpu_idx=
 
 def main(*args):
 
-    from tensorflow.examples.tutorials.mnist import input_data
-    mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
-    testing_x = mnist.test.images.reshape(10000, 28, 28, 1)
-    testing_y = mnist.test.labels
+    if 0:
+        from tensorflow.examples.tutorials.mnist import input_data
+        mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
+        testing_x = mnist.test.images.reshape(10000, 28, 28, 1)
+        testing_y = mnist.test.labels
+    else:
+        aa = np.load('/home/exx/Documents/Hope/generative_classifier/adversarial_attacks/FGSM_images/MNIST28/MNIST_FGSMeps0.4_and_binarized_examples.npz')
+        testing_x = np.expand_dims(aa['FGSM_features'],3)
+        testing_y = aa['orig_target']
+
     para_list = [0.2, 0.3, 0.6, 0.005, 5.0, -2.0]
     st = 0
     ed = len(testing_y)
@@ -183,11 +189,11 @@ def main(*args):
     trained_model_ckpt = '/home/exx/Documents/Hope/generative_classifier/models/VAE/VAE_2018_02_12_22_10_27/experiment_111.ckpt'
     saver = tf.train.Saver()
     saver.restore(sess, trained_model_ckpt)
-    fn = "mnist_testing" #"0.{}epsilon_{}to{}".format(args[0], st, ed)
+    fn = "mnist_eps0.4" #"0.{}epsilon_{}to{}".format(args[0], st, ed)
     log_err = testing_model(sess, model, testing_x, testing_y, para_list, fn=fn, gpu_idx=args[0]-1)
     print('done')
 
 # def testing_model(sess, model, valid_x, valid_y, para_list, name='mnist', gpu_idx=0, img_idx=None):
 
 if __name__ == "__main__":
-    main(2,0)
+    main(3,0)
