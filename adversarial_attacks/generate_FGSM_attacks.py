@@ -3,7 +3,7 @@ from utils.plot_figures import *
 
 
 
-def get_attack_directions(model, sess):
+def get_attack_directions_lenet(model, sess):
 
     temp = set(tf.all_variables())
 
@@ -22,7 +22,7 @@ def get_attack_directions(model, sess):
 
     orth_transform = np.asarray([[(-1) ** j] * model.imsize for j in range(model.imsize)])
 
-    for i in range(10):
+    for i in range(100):
         batch_xs, batch_ys = model.mnist.test.next_batch(1)
         batch_xs = batch_xs.reshape(model.imsize,model.imsize)
         feed_dict = {input_pl: batch_xs.reshape(1, model.imsize, model.imsize, 1), label_pl:batch_ys}
@@ -34,33 +34,27 @@ def get_attack_directions(model, sess):
         delta_vec['x'] = c_grad * gradient_direction_var
         delta_vec['y'] = delta_vec['x'][::-1, ::-1] * orth_transform
 
-        x_hist = []
+        attack_history = {}
+        attack_history['x_hist'] = []
+        attack_history['y_hist'] = []
         for i in range(50):
-            _, adversarial_img = sess.run([apply_gradient_op, input_pl_var], feed_dict)
-            x_hist += [adversarial_img]
+            _, adversarial_img, adversarial_pred = sess.run([apply_gradient_op, input_pl_var, output['Predictions']], feed_dict)
+            attack_history['x_hist'] += [adversarial_img]
+            attack_history['y_hist'] += [adversarial_pred]
 
-        images = [np.squeeze(x_hist[-1]), batch_xs]
-        file_path = 'attacks.png'
-        save_subplots(images, file_path)
 
         pred = {}
-        pred['attacked'] = sess.run(output['Predictions'], {input_pl_var: x_hist[-1].reshape(1, model.imsize, model.imsize, 1)})[0]
-        pred['original'] = sess.run(output['Predictions'], {input_pl_var: batch_xs.reshape(1, model.imsize, model.imsize, 1)})[0]
+        pred['ground_truth'] = batch_ys[0]
+        feed_dict_orig = {input_pl_var: batch_xs.reshape(1, model.imsize, model.imsize, 1)}
+        pred['original'] = sess.run(output['Predictions'], feed_dict_orig)[0]
+        feed_dict_attack = {input_pl_var: attack_history['x_hist'][-1].reshape(1, model.imsize, model.imsize, 1)}
+        pred['attacked'] = sess.run(output['Predictions'], feed_dict_attack)[0]
         feed_dict_step = {input_pl_var: (delta_vec['x'] + batch_xs).reshape(1, model.imsize, model.imsize, 1)}
         pred['one_large_step'] = sess.run(output['Predictions'], feed_dict_step)[0]
 
-        # if attack is successful, plot church plot
-        resolution = 1000
-        test_res = np.zeros((resolution,resolution))
-        axis_range = [-20.,20., -20.,20.]
+        # output only when the attack is successful,
         if (np.round(pred['attacked']) != np.round(pred['original'])).any():
-            for i in range(0,resolution,1):
-                for j in range(0,resolution,1):
-                    w_x = axis_range[0] + (axis_range[1] - axis_range[0]) * i/resolution
-                    w_y = axis_range[2] + (axis_range[3] - axis_range[2]) * j/resolution
-                    test_img = batch_xs + w_x*delta_vec['x'] + w_y*delta_vec['y']
-                    test_pred = sess.run(output['Predictions'], {input_pl_var: test_img.reshape(1, 28, 28, 1)})[0]
-                    test_res[i, j] = np.argmax(test_pred)
-            church_plt(test_res.transpose(), axis_range) #transpose becasue matrix and image different axis notation
+            # output only directions
+                return batch_xs, batch_ys, delta_vec, attack_history
 
-    return delta_vec, pred
+# sess.run(lenet.end_points['Predictions'], {lenet.input: np.tile(orig_img.reshape(1, 28, 28, 1),(lenet.batch_size,1,1,1))})[0]

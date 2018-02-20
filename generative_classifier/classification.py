@@ -64,13 +64,13 @@ def joint_optimization(model, sess, para_list, x_input_opt, apply_gradient_op, i
 def refine_classification(model, sess, x_input_opt, para_list, rec_err, y_pred, z_pred):
     loss_t, y_l, y_u, c_wd, theta, bias = para_list
     if rec_err > loss_t:
-        y_refine = np.zeros_like(y_pred)
-        z_pred_refine = np.zeros_like(z_pred)
-        rec_err_refine = 0.
+        y_refine = -1. * np.ones_like(y_pred)
+        z_pred_refine = -1. * np.ones_like(z_pred)
+        rec_err_refine = -1.
     elif not y_pred.any():
-        y_refine = np.zeros_like(y_pred)
-        z_pred_refine = np.zeros_like(z_pred)
-        rec_err_refine = 0.
+        y_refine = -1. * np.ones_like(y_pred)
+        z_pred_refine = -1. * np.ones_like(z_pred)
+        rec_err_refine = -1.
     else:
         # consider some special cases:
         mnist_idx = np.argsort(y_pred[0])
@@ -101,61 +101,63 @@ def refine_classification(model, sess, x_input_opt, para_list, rec_err, y_pred, 
     return y_refine, z_pred_refine, rec_err_refine
 
 
-def testing_model(sess, model, valid_x, valid_y, para_list, fn='mnist', gpu_idx=0, img_idx=None):
+def testing_classify_model(sess, model, apply_gradient_op, init_op, valid_x, valid_y, para_list, fn=None, img_idx=None):
+    out_dict = {}
 
-    with tf.device('gpu:{}'.format(gpu_idx)):
-        # build the classification optimization model
-        apply_gradient_op, init_op = build_classify_model(model)
+    # optimization
+    out_dict['log_err'] = []
+    out_dict['log_idx'] = []
+    out_dict['log_y_pred'] = []
+    out_dict['log_y_pred_ref'] = []
+    out_dict['log_rec_err'] = []
+    out_dict['log_rec_err_ref'] = []
+    out_dict['log_y_true'] = []
 
-        # optimization
-        log_err = []
-        log_idx = []
-        log_y_pred = []
-        log_y_pred_ref = []
-        log_rec_err = []
-        log_rec_err_ref = []
-        log_y_true = []
+    for opt_idx in range(len(valid_y)):
+        if img_idx:
+            opt_idx = img_idx
+        y_true = valid_y[opt_idx]
+        x_input_opt = valid_x[opt_idx]
+        # binarize first
+        x_input_opt_round = np.round((x_input_opt - np.min(x_input_opt)) / (
+            np.max(x_input_opt) - np.min(x_input_opt)))
+        x_input_opt = x_input_opt_round * (
+            np.max(x_input_opt) - np.min(x_input_opt)) + np.min(x_input_opt)
 
-        for opt_idx in range(len(valid_y)):
-            if img_idx:
-                opt_idx = img_idx
-            y_true = valid_y[opt_idx]
-            x_input_opt = valid_x[opt_idx]
-            # binarize first
-            x_input_opt_round = np.round((x_input_opt - np.min(x_input_opt)) / (
-                np.max(x_input_opt) - np.min(x_input_opt)))
-            x_input_opt = x_input_opt_round * (
-                np.max(x_input_opt) - np.min(x_input_opt)) + np.min(x_input_opt)
+        # perform joint optimization
+        y_pred_hist, z_pred, rec_err = joint_optimization(model, sess, para_list, x_input_opt, apply_gradient_op, init_op)
+        y_pred = y_pred_hist[-1]
+        # refine classification
+        y_pred_refine, z_pred_refine, rec_err_refine = \
+            refine_classification(model, sess, x_input_opt, para_list, rec_err, y_pred, z_pred)
 
-            # perform joint optimization
-            y_pred_hist, z_pred, rec_err = joint_optimization(model, sess, para_list, x_input_opt, apply_gradient_op, init_op)
-            y_pred = y_pred_hist[-1]
-            # refine classification
-            y_pred_refine, z_pred_refine, rec_err_refine = \
-                refine_classification(model, sess, x_input_opt, para_list, rec_err, y_pred, z_pred)
+        out_dict['log_idx'] += [opt_idx]
+        out_dict['log_y_true'] += [y_true]
+        out_dict['log_rec_err'] += [rec_err]
+        out_dict['log_y_pred'] += [y_pred]
+        out_dict['log_y_pred_ref'] += [y_pred_refine]
+        out_dict['log_rec_err_ref'] += [rec_err_refine]
+        if int((np.asarray(y_pred_refine)-y_true).any()):
+            out_dict['log_err'] += [opt_idx]
+            # save wrong cases
+            img = sess.run(model.gen_img, {model.y_input_opt: y_pred, model.z_initial: z_pred})
+            plt.imshow(np.squeeze(img[0]), interpolation='None')
+            plt.title('prediction: {}'.format(np.argmax(y_pred_refine))) #
+            plt.savefig(model.modeldir + '/idx{}_gen.png'.format(opt_idx))
+            plt.imshow(np.squeeze(valid_x[opt_idx]), interpolation='None')
+            plt.title('rec_err: {}'.format(rec_err)) #prediction: {}
+            plt.savefig(model.modeldir + '/idx{}_input.png'.format(opt_idx))
 
-            log_idx += [opt_idx]
-            log_y_true += [y_true]
-            log_rec_err += [rec_err]
-            log_y_pred += [y_pred]
-            log_y_pred_ref += [y_pred_refine]
-            log_rec_err_ref += [rec_err_refine]
-            if int((np.asarray(y_pred_refine)-y_true).any()):
-                log_err += [opt_idx]
-                # save wrong cases
-                img = sess.run(model.gen_img, {model.y_input_opt: y_pred, model.z_initial: z_pred})
-                plt.imshow(np.squeeze(img[0]), interpolation='None')
-                plt.title('prediction: {}'.format(np.argmax(y_pred_refine))) #
-                plt.savefig(model.modeldir + '/idx{}_gen.png'.format(opt_idx))
-                plt.imshow(np.squeeze(valid_x[opt_idx]), interpolation='None')
-                plt.title('rec_err: {}'.format(rec_err)) #prediction: {}
-                plt.savefig(model.modeldir + '/idx{}_input.png'.format(opt_idx))
+        if opt_idx%500==0 and fn:
+            np.savez(model.modeldir+'/{}_{}_{}_{}_{}_{}_{}.npy'.format(fn, 0.1, 0.3, 0.3, 0.001, 5, -2),
+                     log_err=out_dict['log_err'],
+                     log_y_true=out_dict['log_y_true'],
+                     log_y_pred=out_dict['log_y_pred'],
+                     log_y_pred_ref=out_dict['log_y_pred_ref'],
+                     log_idx=out_dict['log_idx'])
 
-            if opt_idx%500==0:
-                np.savez(model.modeldir+'/{}_{}_{}_{}_{}_{}_{}.npy'.format(fn, 0.1, 0.3, 0.3, 0.001, 5, -2),
-                         log_err=log_err, log_y_true=log_y_true, log_y_pred=log_y_pred, log_y_pred_ref=log_y_pred_ref,
-                         log_idx=log_idx)
-    return log_err
+
+    return out_dict
 
 
 def main(*args):
@@ -183,17 +185,20 @@ def main(*args):
     tfconfig.gpu_options.allow_growth = True
     sess = tf.Session(config=tfconfig)
 
-    model = generative_classifier()
-    model.build_training_model()
+    with tf.variable_scope('VAE_subnet', reuse=False):
+        model = VAE_subnet()
+        model.build_training_model()
+        # trained_model_ckpt = '/home/exx/Documents/Hope/generative_classifier/models/VAE/VAE_2018_02_12_22_10_27/experiment_111.ckpt'
+        trained_model_ckpt = '/home/exx/Documents/Hope/generative_classifier/generative_classifier/models/VAE_sbunet/VAE_sbunet_2018_02_19_09_58_33/experiment_85.ckpt'
+        saver = tf.train.Saver()
+        saver.restore(sess, trained_model_ckpt)
+        fn = "mnist_eps0.4" #"0.{}epsilon_{}to{}".format(args[0], st, ed)
+        # build the classification optimization model
+        apply_gradient_op, init_op = build_classify_model(model)
+        out_dict = testing_classify_model(sess, model, apply_gradient_op, init_op, testing_x, testing_y, para_list, fn=fn)
+        print('done')
 
-    trained_model_ckpt = '/home/exx/Documents/Hope/generative_classifier/models/VAE/VAE_2018_02_12_22_10_27/experiment_111.ckpt'
-    saver = tf.train.Saver()
-    saver.restore(sess, trained_model_ckpt)
-    fn = "mnist_eps0.4" #"0.{}epsilon_{}to{}".format(args[0], st, ed)
-    log_err = testing_model(sess, model, testing_x, testing_y, para_list, fn=fn, gpu_idx=args[0]-1)
-    print('done')
-
-# def testing_model(sess, model, valid_x, valid_y, para_list, name='mnist', gpu_idx=0, img_idx=None):
 
 if __name__ == "__main__":
-    main(3,0)
+    with tf.device('gpu:{}'.format(2)):
+        main(3,0)

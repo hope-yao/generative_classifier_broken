@@ -160,19 +160,23 @@ def save_subplots(images, file_path):
     plt.savefig(file_path)
 
 
-def church_plt(test_res, axis_range):
+def church_plt(lenet_pred_matrix, vaesub_pred_matrix, axis_range, fn=None):
     plt.figure()
-    cmap = plt.get_cmap('jet', 10)
-    cmap.set_under('gray')
-    plt.imshow(test_res, cmap=cmap, interpolation='bicubic')
-    plt.xticks(axis_range, ('{}'.format(axis_range[0]), 
-                            '{}'.format(axis_range[1]),
-                            '{}'.format(axis_range[2]),
-                            '{}'.format(axis_range[3])), fontsize=20)
-    plt.colorbar()
-    plt.savefig('church_plt.png', dpi=100)
-    print('done')
+    G = gridspec.GridSpec(1, 2)
+    for i, pred_matrix in enumerate([lenet_pred_matrix, vaesub_pred_matrix]):
+        subplot(G[0, i])
+        cmap = plt.get_cmap('jet', 10)
+        cmap.set_under('gray')
+        plt.imshow(pred_matrix, cmap=cmap, interpolation='bicubic')
+        plt.xticks([0, pred_matrix.shape[0] / 2, pred_matrix.shape[0]-1],
+                   ('{}'.format(axis_range[0]), 0, '{}'.format(axis_range[1])), fontsize=20)
+        plt.yticks([0, pred_matrix.shape[1] / 2, pred_matrix.shape[1]-1],
+                   ('{}'.format(axis_range[2]), 0, '{}'.format(axis_range[3])), fontsize=20)
+        plt.colorbar()
 
+    if fn:
+        plt.savefig(fn, dpi=100)
+    print('done')
 
 if __name__ == '__main__':
     plot_overall_acc()

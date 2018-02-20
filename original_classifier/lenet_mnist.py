@@ -153,20 +153,4 @@ class Lenet():
 if __name__ == '__main__':
     lenet = Lenet()
     lenet.build_model(lenet.input)
-    # lenet.train_model()
-
-    from adversarial_attacks.generate_FGSM_attacks import get_attack_directions
-    # Launch the graph
-    FLAGS = tf.app.flags.FLAGS
-    tfconfig = tf.ConfigProto(
-        allow_soft_placement=True,
-        log_device_placement=True,
-    )
-    tfconfig.gpu_options.allow_growth = True
-    sess = tf.Session(config=tfconfig)
-    trained_model_ckpt = '/home/exx/Documents/Hope/generative_classifier/original_classifier/models/LENET/LENET_2018_02_14_10_02_23/experiment_0.ckpt'
-    saver = tf.train.Saver()
-    saver.restore(sess, trained_model_ckpt)
-
-    get_attack_directions(lenet, sess)
-
+    lenet.train_model()

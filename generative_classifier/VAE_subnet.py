@@ -19,14 +19,21 @@ from generative_classifier.generator_models import *
 from utils.plot_figures import *
 
 
-class generative_classifier(object):
+class VAE_subnet(object):
     def __init__(self):
-
+        # Launch the graph
+        FLAGS = tf.app.flags.FLAGS
+        tfconfig = tf.ConfigProto(
+            allow_soft_placement=True,
+            log_device_placement=True,
+        )
+        tfconfig.gpu_options.allow_growth = True
+        self.sess = tf.Session(config=tfconfig)
 
         self.is_vae = True
 
         # Parameters
-        self.learning_rate = 0.0003
+        self.learning_rate = 0.0001
         self.training_epochs = 200
         self.batch_size = 32
         self.display_step = 1
@@ -37,11 +44,11 @@ class generative_classifier(object):
         # Network Parameters
         self.imsize = 28# MNIST data input (img shape: 28*28)
 
-        self.logdir, self.modeldir = creat_dir('VAE')
-        copyfile('./generative_classifier/VAE_subnet.py', self.modeldir + '/' + 'VAE_subnet.py')
-        copyfile('./generative_classifier/generator_models.py', self.modeldir + '/' + 'generator_models.py')
-        copyfile('./utils/plot_figures.py', self.modeldir + '/' + 'plot_figures.py')
-        copyfile('./adversarial_attacks/generate_FGSM_attacks.py', self.modeldir + '/' + 'generate_FGSM_attacks.py')
+        self.logdir, self.modeldir = creat_dir('VAE_sbunet')
+        # copyfile('./generative_classifier/VAE_subnet.py', self.modeldir + '/' + 'VAE_subnet.py')
+        # copyfile('./generative_classifier/generator_models.py', self.modeldir + '/' + 'generator_models.py')
+        # copyfile('./utils/plot_figures.py', self.modeldir + '/' + 'plot_figures.py')
+        # copyfile('./adversarial_attacks/generate_FGSM_attacks.py', self.modeldir + '/' + 'generate_FGSM_attacks.py')
 
         # tf Graph input (only pictures)
         self.X = tf.placeholder("float", [self.batch_size, self.imsize, self.imsize, 1])
@@ -95,14 +102,6 @@ class generative_classifier(object):
 
 
     def optimizing(self):
-        # Launch the graph
-        FLAGS = tf.app.flags.FLAGS
-        tfconfig = tf.ConfigProto(
-            allow_soft_placement=True,
-            log_device_placement=True,
-        )
-        tfconfig.gpu_options.allow_growth = True
-        self.sess = tf.Session(config=tfconfig)
         # Initializing the variables
         self.init = tf.global_variables_initializer()
         self.sess.run(self.init)
@@ -142,8 +141,11 @@ class generative_classifier(object):
 
 if __name__ == "__main__":
 
-    classifier = generative_classifier()
-    classifier.build_training_model()
-    classifier.optimizing()
-    visualize_generator_performance(classifier, classifier.modeldir+'/test.png')
+    with tf.variable_scope('VAE_subnet', reuse=False):
+        with tf.device('/device:GPU:3'):
+            vaesub = VAE_subnet()
+            vaesub.build_training_model()
+            vaesub.optimizing()
+
+    visualize_generator_performance(vaesub, vaesub.modeldir+'/test.png')
     print('done')
