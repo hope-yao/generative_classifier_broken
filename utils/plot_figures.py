@@ -160,11 +160,12 @@ def save_subplots(images, file_path):
     plt.savefig(file_path)
 
 
-def church_plt(lenet_pred_matrix, vaesub_pred_matrix, axis_range, fn=None):
+def church_plt(pred_res, axis_range, fn=None):
     plt.figure()
-    G = gridspec.GridSpec(1, 2)
-    for i, pred_matrix in enumerate([lenet_pred_matrix, vaesub_pred_matrix]):
-        subplot(G[0, i])
+    G = gridspec.GridSpec(1, len(pred_res))
+    cnt = 0
+    for mat_name, pred_matrix in pred_res.items():
+        subplot(G[0, cnt])
         cmap = plt.get_cmap('jet', 10)
         cmap.set_under('gray')
         plt.imshow(pred_matrix, cmap=cmap, interpolation='bicubic')
@@ -173,6 +174,8 @@ def church_plt(lenet_pred_matrix, vaesub_pred_matrix, axis_range, fn=None):
         plt.yticks([0, pred_matrix.shape[1] / 2, pred_matrix.shape[1]-1],
                    ('{}'.format(axis_range[2]), 0, '{}'.format(axis_range[3])), fontsize=20)
         plt.colorbar()
+        plt.title(mat_name)
+        cnt += 1
 
     if fn:
         plt.savefig(fn, dpi=100)

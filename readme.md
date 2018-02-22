@@ -3,12 +3,24 @@ Making use of generative models to defend adversarial attacks.
 Here Variational Auto-Encoder with multiple decoders is used to test the idea.
 Network structure:
 
-![acc](../master/assets/net_struct.png)
+![net_struct](../master/assets/net_struct.png)
 
 ## Prerequisite
 Tensorflow 1.1.0
 
 ## Usage
+
+### code structure
+* assets
+* adversarial_attacks
+  > get 
+* generative_classifier
+    * VAE_subnet.py
+      > training of generative model
+    * generator_models.py
+      > networks structure
+* original_classifier
+* utils
 
 ### setting up
 You can find pretrained models in 
@@ -44,13 +56,18 @@ Here is a comparison of the overall accuracy with [binary filtered classifier](h
 
 ![overall_acc](../master/assets/imgs/overall_acc.png)
 
-[Church window plot](https://arxiv.org/abs/1611.02770) of this attack:
+Visualization of different defense method of gradient based attack using 
+[church window plot](https://arxiv.org/abs/1611.02770):
 
-![church_plt_lenet](../master/assets/imgs/church_plt_lenet.png)
+![church_plt_zoom_out](../master/assets/imgs/church_plot_s4_g1.png)
 
-![church_plt_vaesub](../master/assets/imgs/church_plt_vaesub.png)
+X axis is the adversarial gradient direction, Y axis is an arbitary orthogonal direction.
+Zoom in around origin:
+
+![church_plt_zoom_in](../master/assets/imgs/church_plot_s0.8_g1.png)
+
  
-Critical FGSM attacked images:
+At the boundary on X axis, critical FGSM images:
 
 ![critical_img_lenet](../master/assets/imgs/critical_img_lenet.png)
 
@@ -58,8 +75,8 @@ Critical FGSM attacked images:
 
 ## ToDO
 
--[] weight sharing in decoders
+-[ ] weight sharing in decoders
 
--[] smallNORB dataset
+-[ ] smallNORB dataset
 
--[] overlapping mnist 
+-[ ] overlapping mnist 
